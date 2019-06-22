@@ -11,6 +11,7 @@
 	  "supportUrl": "https://github.com/simpleclub/algolia-analytics-data-studio-connector/issues",
 	  "description": "Get analytics data from Algolia such as popular searches or searches with no results.",
 	  "shortDescription": "Get analytics data from Algolia.",
+    	  "sources": ["ALGOLIA"],
 	  "authType": ["NONE"],
 	  "feeType": ["FREE"]
 	},
