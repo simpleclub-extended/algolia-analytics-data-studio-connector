@@ -2,7 +2,7 @@ var connector = null;
 
 function initConnector() {
   if (connector === null) {
-    connector = new AlgoliaConnector();
+    connector = new ChartMogulConnector();
   }
   return connector;
 }

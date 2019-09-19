@@ -3,23 +3,23 @@
 	"dependencies": {
 	},
 	"dataStudio": {
-	  "name": "Algolia Analytics",
-	  "logoUrl": "https://www.algolia.com/static/algolia-blue-mark-d9c78960c0c19f25f2dc0614236bff90.png",
-	  "company": "simpleclub (TheSimpleClub GmbH)",
-	  "companyUrl": "https://simpleclub.com/",
-	  "addonUrl": "https://github.com/simpleclub/algolia-analytics-data-studio-connector",
-	  "supportUrl": "https://github.com/simpleclub/algolia-analytics-data-studio-connector/issues",
-	  "description": "Get analytics data from Algolia such as popular searches or searches with no results.",
-	  "shortDescription": "Get analytics data from Algolia.",
-    	  "sources": ["ALGOLIA"],
-	  "authType": ["NONE"],
-	  "feeType": ["FREE"]
+		"name": "Chartmogul",
+		"logoUrl": "https://www.algolia.com/static/algolia-blue-mark-d9c78960c0c19f25f2dc0614236bff90.png",
+		"company": "simpleclub (TheSimpleClub GmbH)",
+		"companyUrl": "https://simpleclub.com/",
+		"addonUrl": "https://github.com/simpleclub/algolia-analytics-data-studio-connector",
+		"supportUrl": "https://github.com/simpleclub/algolia-analytics-data-studio-connector/issues",
+		"description": "Get analytics data from Algolia such as popular searches or searches with no results.",
+		"shortDescription": "Get analytics data from Algolia.",
+    	"sources": ["ALGOLIA"],
+		"authType": ["NONE"],
+		"feeType": ["FREE"]
 	},
 	"oauthScopes": [
-	  "https://www.googleapis.com/auth/script.external_request"
+	  	"https://www.googleapis.com/auth/script.external_request"
 	],
 	"urlFetchWhitelist": [
-	  "https://analytics.us.algolia.com/"
+	  	"https://api.chartmogul.com/"
 	]
   }
   

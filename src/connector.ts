@@ -1,18 +1,29 @@
-interface AlgoliaConnectorConfig {
-	indices: string
-	analyticsType: AnalyticsType
+interface ChartMogulConnectorConfig {
+	dateRange: DateRangeType
+	interval: IntervalType
+	geo: string
+	plans: string
 }
 
-enum AnalyticsType {
-	topSearches = "top_searches",
-	topNoResults = "top_no_results",
-	topHits = "top_hits",
-	topFilterAttributes = "top_filter_attributes",
-	// topFiltersNoResult = "top_filters_no_result",
+enum DateRangeType {
+	thisYear = "this_year",
+	// lastYear = "last_year",
+	// thisQuater = "this_quater",
+	// lastQuater = "last_quater",
+	// thisMonth = "this_month",
+	// lastMonth = "last_month",
+	// thisWeek = "this_week",
+	// lastWeek = "last_week",
+}
+
+enum IntervalType {
+	day = "day",
+	week = "week",
+	month = "month",
 }
 
 interface DataStudioRequest {
-	configParams?: AlgoliaConnectorConfig
+	configParams?: ChartMogulConnectorConfig
 	fields?: Schema
 	userPass?: {
 		username: string,
@@ -28,7 +39,7 @@ interface DataStudioRequest {
 /**
  * Contains core functionality for Data Studio connector.
  */
-class AlgoliaConnector {
+class ChartMogulConnector {
 
 	/** @const */
 	FIELD_TYPES = ['STRING', 'NUMBER', 'BOOLEAN', 'TIMESTAMP'];
@@ -39,12 +50,12 @@ class AlgoliaConnector {
 		semanticType: 'YEAR_MONTH_DAY_HOUR'
 	};
 	/** @const */
-	aloglia: Algolia;
+	chartMogul: ChartMogul;
 	/** @const */
 	enableLogging: boolean;
 
 	constructor(enableLogging = true) {
-		this.aloglia = new Algolia();
+		this.chartMogul = new ChartMogul();
 
 		this.enableLogging = enableLogging;
 	}
@@ -90,26 +101,41 @@ class AlgoliaConnector {
 		return {
 			configParams: [
 				{
-					name: 'indices',
-					type: 'TEXTINPUT',
-					displayName: 'Indices',
-					helpText:
-						'Select the Algolia indices to use for this Data Source. \
-				To use multiple indices, separate each index by comma.'
+					name: 'dateRange',
+					type: 'SELECT_SINGLE',
+					displayName: 'The range to fetch the data for',
+					helpText: 'Select which date range you want to get',
+					options: [
+						{ label: 'This year', value: DateRangeType.thisYear },
+					]
 				},
 				{
-					name: 'analyticsType',
+					name: 'interval',
 					type: 'SELECT_SINGLE',
-					displayName: 'Type of Analytics',
-					helpText: 'Select which results you want to get',
+					displayName: 'The interval in which entries should be retrieved',
+					helpText: 'In the selected interval retrieves entries by this interval',
 					options: [
-						{ label: 'Top Searches', value: AnalyticsType.topSearches },
-						{ label: 'Top Search with no Results', value: AnalyticsType.topNoResults },
-						{ label: 'Top Hits', value: AnalyticsType.topHits },
-						{ label: 'Top Filter Attributes', value: AnalyticsType.topFilterAttributes },
-						// { label: 'Top Filters for a No Result Search', value: SchemaType.topFiltersNoResult }
+						{ label: 'Day', value: IntervalType.day },
+						{ label: 'Week', value: IntervalType.week },
+						{ label: 'Month', value: IntervalType.month },
 					]
-				}
+				},
+				{
+					name: 'geo',
+					type: 'TEXTINPUT',
+					displayName: 'The countries to filter the results',
+					helpText:
+						'A comma-separated list of ISO 3166-1 Alpha-2 formatted \
+						country codes to filter the results to, e.g. US,GB,DE.'
+				},
+				{
+					name: 'plans',
+					type: 'TEXTINPUT',
+					displayName: 'The planes to filter the results',
+					helpText:
+						'A comma-separated list of plan names (as configured in your \
+							ChartMogul account) to filter the results to. '
+				},
 			]
 		};
 	}
@@ -122,16 +148,8 @@ class AlgoliaConnector {
 	 */
 	getSchema(request: DataStudioRequest): { schema: Schema } {
 		// Convert the user input to a Data Studio schema
-		const analyticsType: AnalyticsType = request.configParams.analyticsType;
 
-		const schema = new AlgoliaSchema().schemaForType(analyticsType);
-		// Add predefined fields
-		schema.push({
-			name: 'type',
-			label: 'type',
-			dataType: DataType.string,
-			description: 'The type of analytics for this data set.'
-		});
+		const schema = new ChartMogulSchema().getSchema();
 
 		return { schema: schema };
 	}
@@ -143,30 +161,25 @@ class AlgoliaConnector {
 	 * @return {Object} Contains the schema and data for the given request.
 	 */
 	getData(request: DataStudioRequest): object {
-		const indicesValue = request.configParams.indices;
-		if (!indicesValue) {
-			throw 'Missing Algolia Indices';
+		const dateRange = request.configParams.dateRange;
+		if (!dateRange) {
+			throw 'Missing date range';
 		}
-		const analyticsType = request.configParams.analyticsType;
-		if (!analyticsType) {
-			throw 'Missing Analytics Type';
-		}
+		const interval = request.configParams.interval;
+		const geo = request.configParams.geo;
+		const plans = request.configParams.plans;
 
 		// Prepare the schema for the fields requested.
 		const requestedSchema = this.getFilteredSchema(request);
 
-		// Fetch and filter the requested data from Algolia
-		const algolia = new Algolia();
-		const indices = indicesValue.split(',');
-		let rows = [];
-		indices.forEach(function (index) {
-			const data = algolia.getData(
-				analyticsType,
-				index,
-				requestedSchema
-			);
-			rows = rows.concat(data);
-		});
+		// Fetch and filter the requested data from ChartMogul
+		const rows = this.chartMogul.getData(
+			dateRange,
+			interval,
+			geo,
+			plans,
+			requestedSchema
+		);
 
 		return { schema: requestedSchema, rows: rows };
 	}
@@ -201,27 +214,27 @@ class AlgoliaConnector {
 	/** Predefined Data Studio function for resetting auth creds. */
 	resetAuth() {
 		const userProperties = PropertiesService.getUserProperties();
-		userProperties.deleteProperty('dscc.appId');
-		userProperties.deleteProperty('dscc.key');
+		userProperties.deleteProperty('dscc.accountToken');
+		userProperties.deleteProperty('dscc.secret');
 	}
 
 	/** Predefined Data Studio function for validating auth creds. */
 	isAuthValid(): boolean {
 		const userProperties = PropertiesService.getUserProperties();
-		const appId = userProperties.getProperty('dscc.appId');
-		const apiKey = userProperties.getProperty('dscc.key');
-		return appId !== null && appId !== ''
-			&& apiKey !== null && apiKey !== '';
+		const accountToken = userProperties.getProperty('dscc.accountToken');
+		const secret = userProperties.getProperty('dscc.secret');
+		return accountToken !== null && accountToken !== ''
+			&& secret !== null && secret !== '';
 	}
 
 	/** Predefined Data Studio function for setting auth creds. */
 	setCredentials(request: DataStudioRequest) {
-		const appId = request.userPass.username;
-		const apiKey = request.userPass.password;
+		const accountToken = request.userPass.username;
+		const secret = request.userPass.password;
 
 		const userProperties = PropertiesService.getUserProperties();
-		userProperties.setProperty('dscc.appId', appId);
-		userProperties.setProperty('dscc.key', apiKey);
+		userProperties.setProperty('dscc.accountToken', accountToken);
+		userProperties.setProperty('dscc.secret', secret);
 		return {
 			errorCode: 'NONE'
 		};
